@@ -2,24 +2,30 @@ import os
 from dotenv import load_dotenv
 from openai import OpenAI
 
-# Load .env FIRST
+# 🔹 load .env automatically
 load_dotenv()
 
-def generate_text(system_prompt: str, user_prompt: str) -> str:
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise RuntimeError("OPENAI_API_KEY not found in environment")
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-    client = OpenAI(api_key=api_key)
+DEFAULT_MODEL = os.getenv("TEACHAI_MODEL", "gpt-4o-mini")
+EMBED_MODEL = os.getenv("TEACHAI_EMBED_MODEL", "text-embedding-3-small")
 
-    model = os.getenv("TEACHAI_MODEL", "gpt-4o-mini")
 
-    resp = client.responses.create(
-        model=model,
-        input=[
+def generate_text(system_prompt: str, user_prompt: str, model: str | None = None) -> str:
+    resp = client.chat.completions.create(
+        model=model or DEFAULT_MODEL,
+        messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
+        temperature=0.3,
     )
+    return resp.choices[0].message.content.strip()
 
-    return resp.output_text
+
+def embed_texts(texts: list[str]) -> list[list[float]]:
+    resp = client.embeddings.create(
+        model=EMBED_MODEL,
+        input=texts,
+    )
+    return [item.embedding for item in resp.data]
