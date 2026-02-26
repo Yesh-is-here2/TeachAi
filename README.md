@@ -1,186 +1,141 @@
-TeachAI — RAG-Powered Python Learning Assistant
-TeachAI is a full-stack AI tutoring system that delivers structured Python explanations using Retrieval-Augmented Generation (RAG), semantic search, and a modern web interface. README (5)
+# TeachAI — RAG-Powered Python Learning Assistant
+
+TeachAI is a full-stack AI tutoring system that delivers structured Python explanations using **Retrieval-Augmented Generation (RAG)**, semantic search, and a modern web interface.
+
 This project demonstrates a production-style AI architecture combining:
 
+- FastAPI backend
+- OpenAI embeddings + LLM reasoning
+- Vector similarity retrieval
+- SQLite persistence
+- Next.js frontend UI
 
-FastAPI backend
+---
 
+# Live System Architecture
 
-OpenAI embeddings + LLM reasoning
+## Flow
 
+User  
+↓  
+Next.js Frontend  
+↓  
+FastAPI Backend  
+↓  
+Embeddings + Vector Search (RAG)  
+↓  
+LLM  
+↓  
+Structured Answer  
+↓  
+UI Display  
 
-Vector similarity retrieval
+---
 
+# Core Features
 
-SQLite persistence
+## AI Tutor
 
+Explains Python topics clearly and returns:
 
-Next.js frontend UI
+- Direct answer  
+- Key points  
+- Code example  
+- Follow-up learning questions  
 
+---
 
+## RAG Memory
 
-Live System Architecture
-Flow
-User → Next.js Frontend → FastAPI Backend →
-Embeddings + Vector Search (RAG) → LLM → Structured Answer → UI README (5)
-
-Core Features
-AI Tutor
-
-
-Explains Python topics clearly
-
-
-Returns:
-
-
-Direct answer
-
-
-Key points
-
-
-Code example
-
-
-Follow-up questions
-
-
-
-
-RAG Memory
-
-
-Users can ingest notes
-
+Users can ingest notes.
 
 Notes are:
 
+- Chunked  
+- Embedded  
+- Stored in vector index  
 
-Chunked
+Answers are grounded in retrieved context.
 
+---
 
-Embedded
+## Multi-User Support
 
+- Guest authentication
+- User-specific document retrieval
 
-Stored in vector index
+---
 
+## Production-Ready Backend
 
+- FastAPI REST API
+- SQLite database
+- Vector similarity search
+- Environment-based configuration
+- CORS-enabled frontend communication
 
+---
 
-Answers are grounded in retrieved context. README (5)
+## Modern Frontend
 
+- Next.js + React
+- Clean minimal UI
+- Real-time AI responses
+- Health-check + error handling
 
-Multi-User Support
+---
 
+# Tech Stack
 
-Guest authentication
+## Backend
 
+- FastAPI
+- SQLAlchemy + SQLite
+- NumPy vector operations
+- OpenAI API (LLM + embeddings)
+- Uvicorn
 
-User-specific document retrieval. README (5)
+## Frontend
 
+- Next.js (App Router)
+- React + TypeScript
+- Tailwind CSS
 
-Production-Ready Backend
+## Deployment
 
+- Backend: Render
+- Frontend: Local (optional Vercel)
 
-FastAPI REST API
+---
 
+# Project Structure
 
-SQLite database
 
-
-Vector similarity search
-
-
-Environment-based configuration
-
-
-CORS-enabled frontend communication. README (5)
-
-
-Modern Frontend
-
-
-Next.js + React
-
-
-Clean minimal UI
-
-
-Real-time AI responses
-
-
-Health-check + error handling. README (5)
-
-
-
-Tech Stack
-Backend
-
-
-FastAPI
-
-
-SQLAlchemy + SQLite
-
-
-NumPy vector operations
-
-
-OpenAI API (LLM + embeddings)
-
-
-Uvicorn server
-
-
-Frontend
-
-
-Next.js (App Router)
-
-
-React + TypeScript
-
-
-Tailwind CSS
-
-
-Deployment
-
-
-Backend: Render
-
-
-Frontend: Local (optional Vercel deploy). README (5)
-
-
-
-Project Structure
 teachai/
-│
-├── backend/
-│   ├── main.py
-│   ├── db/
-│   ├── rag/
-│   ├── services/
-│   └── requirements.txt
-│
-├── mobile_app/   # Next.js frontend
-├── docs/
-└── README.md
-``` :contentReference[oaicite:7]{index=7}
+
+backend/
+├── main.py
+├── db/
+├── rag/
+├── services/
+└── requirements.txt
+
+mobile_app/ # Next.js frontend
+docs/
+README.md
+
 
 ---
 
 # API Endpoints
 
 | Feature | Endpoint |
-|--------|----------|
+|----------|------------|
 | Health | `GET /health` |
 | Guest Login | `POST /auth/guest` |
 | Ingest Notes | `POST /ingest/text` |
 | Ask Question (RAG) | `POST /ask` |
-| Learn Structured Topic | `POST /learn` | :contentReference[oaicite:8]{index=8}
+| Learn Structured Topic | `POST /learn` |
 
 ---
 
@@ -196,86 +151,90 @@ pip install -r requirements.txt
 uvicorn main:app --reload
 
 Backend runs at:
+
 http://127.0.0.1:8000
-``` :contentReference[oaicite:9]{index=9}
-
----
-
-## Frontend
-
-```bash
+Frontend
 cd mobile_app
 npm install
 npm run dev
 
 Frontend runs at:
+
 http://localhost:3000
-``` :contentReference[oaicite:10]{index=10}
-
----
-
-# Environment Variables
+Environment Variables
 
 Create:
-
 
 backend/.env
 
 Add:
 
-
 OPENAI_API_KEY=your_key_here
+Example Usage
+Question
 
----
+Explain Python lists
 
-# Example Output
+Response Includes
 
-## Question
-**Explain Python lists**
+Clear definition
 
-## TeachAI Response Includes
-- Clear definition  
-- Key properties  
-- Python code example  
-- Follow-up learning questions. :contentReference[oaicite:12]{index=12}
+Key properties
 
----
+Code example
 
-# Why This Project Matters
+Follow-up learning questions
 
-TeachAI is **not a simple chatbot**.
+Why This Project Matters
+
+TeachAI is not a simple chatbot.
 
 It demonstrates:
 
-- Real RAG pipeline  
-- Vector search reasoning  
-- Multi-user AI memory  
-- Full-stack AI deployment  
-- Production-style architecture. :contentReference[oaicite:13]{index=13}
+Real RAG pipeline
+
+Vector search reasoning
+
+Multi-user AI memory
+
+Full-stack AI deployment
+
+Production-style architecture
 
 This aligns strongly with:
 
-- AI Engineer roles  
-- LLM Engineer roles  
-- Applied ML Engineer positions. :contentReference[oaicite:14]{index=14}
+AI Engineer roles
+
+LLM Engineer roles
+
+Applied ML Engineer positions
+
+Future Improvements
+
+PDF ingestion
+
+Persistent vector database (FAISS / pgvector)
+
+Chat history memory
+
+Voice interface
+
+Public SaaS deployment
+
+Author
+
+Yeshwanth Akula
+Master’s in Computer Science — Saint Louis University
+Focus: AI Engineering, LLM Systems, Production ML
+
 
 ---
 
-# Future Improvements
+If you want, next we can:
 
-- PDF ingestion  
-- Persistent vector database (FAISS / pgvector)  
-- Chat history memory  
-- Voice interface  
-- Public SaaS deployment. :contentReference[oaicite:15]{index=15}
+• Add architecture diagram (ASCII or image)  
+• Add badges (FastAPI, OpenAI, RAG, React)  
+• Add recruiter-focused “What I Learned” section  
+• Convert this into a **top-tier portfolio AI project page**
 
----
-
-# Author
-
-**Yeshwanth Akula**  
-Master’s in Computer Science — Saint Louis University  
-Focus: AI Engineering, LLM Systems, Production ML. :contentReference[oaicite:16]{index=16}
-
----
-
+This project is strong. We can make it look elite.
