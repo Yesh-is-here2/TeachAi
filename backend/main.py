@@ -1,5 +1,7 @@
 ﻿from __future__ import annotations
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -17,9 +19,48 @@ from services.llm import generate_text, embed_texts
 
 load_dotenv()
 
-app = FastAPI(title="TeachAI v3 (RAG + SQLite)")
+SUBJECT = "Python"
+VECTOR_DIM = 1536
+store = VectorStore(dim=VECTOR_DIM)
 
-# ✅ CORS for local Next.js frontend
+
+def rebuild_index(db: Session):
+    """
+    Load all chunks from SQLite and rebuild the in-memory vector index.
+    Called on startup so the vector store survives server restarts.
+    """
+    try:
+        store.reset()
+        chunks = crud.get_all_chunks(db)
+        if not chunks:
+            return
+        texts = [c.content for c in chunks]
+        embs = embed_texts(texts)
+        vecs = normalize(np.array(embs, dtype="float32"))
+        meta = [{"user_id": c.user_id, "doc_id": c.doc_id, "text": c.content} for c in chunks]
+        store.add(vecs, meta)
+        print(f"[startup] Rebuilt vector index with {len(chunks)} chunks")
+    except Exception as e:
+        # Don't crash the server if OpenAI is unreachable on startup
+        print(f"[startup] Warning: could not rebuild index — {e}")
+
+
+# Modern lifespan approach — replaces deprecated @app.on_event("startup")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    db = next(get_db())
+    try:
+        rebuild_index(db)
+    finally:
+        db.close()
+    yield
+
+
+app = FastAPI(title="TeachAI", version="3.0.0", lifespan=lifespan)
+
+# Create DB tables on startup
+Base.metadata.create_all(bind=engine)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -27,25 +68,17 @@ app.add_middleware(
         "http://localhost:3001",
         "http://127.0.0.1:3000",
         "http://127.0.0.1:3001",
+        # Add your Vercel/Render frontend URL here when deployed
+        "https://teachai.vercel.app",
+        "https://teachai-frontend.onrender.com",
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-SUBJECT = "Python"
 
-# Create DB tables
-Base.metadata.create_all(bind=engine)
-
-# Vector store
-VECTOR_DIM = 1536
-store = VectorStore(dim=VECTOR_DIM)
-
-
-# =========================
-# Request / Response Models
-# =========================
+# ── Request / Response Models ──────────────────────────────────
 
 class GuestAuthResponse(BaseModel):
     user_id: str
@@ -73,36 +106,11 @@ class LearnRequest(BaseModel):
     style: str = "simple"
 
 
-# =========================
-# Startup: rebuild index
-# =========================
-
-@app.on_event("startup")
-def rebuild_index_on_startup():
-    db = next(get_db())
-    try:
-        store.reset()
-        chunks = crud.get_all_chunks(db)
-        if not chunks:
-            return
-
-        texts = [c.content for c in chunks]
-        embs = embed_texts(texts)
-        vecs = normalize(np.array(embs, dtype="float32"))
-
-        meta = [{"user_id": c.user_id, "doc_id": c.doc_id, "text": c.content} for c in chunks]
-        store.add(vecs, meta)
-    finally:
-        db.close()
-
-
-# =========================
-# Basic routes
-# =========================
+# ── Basic Routes ───────────────────────────────────────────────
 
 @app.get("/")
 def root():
-    return {"name": "TeachAI", "version": "v3", "subject": SUBJECT, "docs": "/docs"}
+    return {"name": "TeachAI", "version": "3.0.0", "subject": SUBJECT, "docs": "/docs"}
 
 
 @app.get("/health")
@@ -110,9 +118,7 @@ def health():
     return {"status": "ok", "subject": SUBJECT}
 
 
-# =========================
-# Prompt helper
-# =========================
+# ── Prompt Helper ──────────────────────────────────────────────
 
 def teacher_system_prompt(level: str, style: str) -> str:
     return f"""
@@ -120,7 +126,7 @@ You are TeachAI, a patient expert tutor for ONE subject: {SUBJECT}.
 
 Rules:
 - Only answer within {SUBJECT}.
-- If user asks outside {SUBJECT}, refuse briefly and ask them to rephrase in {SUBJECT}.
+- If the user asks outside {SUBJECT}, refuse briefly and redirect.
 - Be accurate. If unsure, say so.
 
 Teaching style: {style}
@@ -131,9 +137,7 @@ Include examples when helpful.
 """.strip()
 
 
-# =========================
-# Auth
-# =========================
+# ── Auth ───────────────────────────────────────────────────────
 
 @app.post("/auth/guest", response_model=GuestAuthResponse)
 def auth_guest(db: Session = Depends(get_db)):
@@ -141,9 +145,7 @@ def auth_guest(db: Session = Depends(get_db)):
     return {"user_id": user_id}
 
 
-# =========================
-# Ingest notes
-# =========================
+# ── Ingest ─────────────────────────────────────────────────────
 
 @app.post("/ingest/text")
 def ingest_text(req: IngestTextRequest, db: Session = Depends(get_db)):
@@ -157,7 +159,6 @@ def ingest_text(req: IngestTextRequest, db: Session = Depends(get_db)):
     doc_id = crud.create_document(db, req.user_id, title=req.title, source="manual")
     n = crud.add_chunks(db, req.user_id, doc_id, chunks)
 
-    # Embed + store vectors
     embs = embed_texts(chunks)
     vecs = normalize(np.array(embs, dtype="float32"))
     meta = [{"user_id": req.user_id, "doc_id": doc_id, "text": c} for c in chunks]
@@ -166,9 +167,7 @@ def ingest_text(req: IngestTextRequest, db: Session = Depends(get_db)):
     return {"doc_id": doc_id, "chunks_added": n}
 
 
-# =========================
-# Ask (RAG)
-# =========================
+# ── Ask (RAG) ──────────────────────────────────────────────────
 
 @app.post("/ask")
 def ask(req: AskRequest, db: Session = Depends(get_db)):
@@ -176,17 +175,13 @@ def ask(req: AskRequest, db: Session = Depends(get_db)):
         if not crud.get_user(db, req.user_id):
             raise HTTPException(status_code=404, detail="user_id not found. Call /auth/guest first.")
 
-        # Retrieve relevant chunks
         q_emb = embed_texts([req.question])[0]
         q_vec = normalize(np.array([q_emb], dtype="float32"))
         hits = store.search(q_vec, top_k=max(1, min(req.top_k, 10)))
-
-        # Filter by user
         hits = [h for h in hits if h.get("user_id") == req.user_id]
         context_blocks = "\n\n---\n\n".join([h["text"] for h in hits[:req.top_k]])
 
         sys = teacher_system_prompt(req.level, req.style)
-
         user_prompt = f"""
 Question: {req.question}
 Optional context: {req.context or "None"}
@@ -208,7 +203,7 @@ Return:
             "user_id": req.user_id,
             "question": req.question,
             "answer": text,
-            "sources": [{"score": h["score"], "doc_id": h["doc_id"]} for h in hits[:req.top_k]],
+            "sources": [{"score": round(h["score"], 3), "doc_id": h["doc_id"]} for h in hits[:req.top_k]],
         }
 
     except HTTPException:
@@ -217,9 +212,7 @@ Return:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# =========================
-# Learn structured lesson
-# =========================
+# ── Learn ──────────────────────────────────────────────────────
 
 @app.post("/learn")
 def learn(req: LearnRequest, db: Session = Depends(get_db)):
@@ -228,7 +221,6 @@ def learn(req: LearnRequest, db: Session = Depends(get_db)):
             raise HTTPException(status_code=404, detail="user_id not found. Call /auth/guest first.")
 
         sys = teacher_system_prompt(req.level, req.style)
-
         user_prompt = f"""
 Teach this topic in {SUBJECT}: {req.topic}
 
